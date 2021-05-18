@@ -20,8 +20,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.autograd import Variable
-from tensorboardX import SummaryWriter
+# from tensorboardX import SummaryWriter
 
+mlflow.autolog()
 # Command-line arguments
 parser = argparse.ArgumentParser(description="PyTorch MNIST Example")
 parser.add_argument(
@@ -39,7 +40,7 @@ parser.add_argument(
     help="input batch size for testing (default: 1000)",
 )
 parser.add_argument(
-    "--epochs", type=int, default=10, metavar="N", help="number of epochs to train (default: 10)"
+    "--epochs", type=int, default=2, metavar="N", help="number of epochs to train (default: 10)"
 )
 parser.add_argument(
     "--lr", type=float, default=0.01, metavar="LR", help="learning rate (default: 0.01)"
@@ -118,15 +119,15 @@ class Net(nn.Module):
         x = self.fc2(x)
         return F.log_softmax(x, dim=0)
 
-    def log_weights(self, step):
-        writer.add_histogram("weights/conv1/weight", model.conv1.weight.data, step)
-        writer.add_histogram("weights/conv1/bias", model.conv1.bias.data, step)
-        writer.add_histogram("weights/conv2/weight", model.conv2.weight.data, step)
-        writer.add_histogram("weights/conv2/bias", model.conv2.bias.data, step)
-        writer.add_histogram("weights/fc1/weight", model.fc1.weight.data, step)
-        writer.add_histogram("weights/fc1/bias", model.fc1.bias.data, step)
-        writer.add_histogram("weights/fc2/weight", model.fc2.weight.data, step)
-        writer.add_histogram("weights/fc2/bias", model.fc2.bias.data, step)
+    # def log_weights(self, step):
+    #     writer.add_histogram("weights/conv1/weight", model.conv1.weight.data, step)
+    #     writer.add_histogram("weights/conv1/bias", model.conv1.bias.data, step)
+    #     writer.add_histogram("weights/conv2/weight", model.conv2.weight.data, step)
+    #     writer.add_histogram("weights/conv2/bias", model.conv2.bias.data, step)
+    #     writer.add_histogram("weights/fc1/weight", model.fc1.weight.data, step)
+    #     writer.add_histogram("weights/fc1/bias", model.fc1.bias.data, step)
+    #     writer.add_histogram("weights/fc2/weight", model.fc2.weight.data, step)
+    #     writer.add_histogram("weights/fc2/bias", model.fc2.bias.data, step)
 
 
 model = Net()
@@ -135,7 +136,7 @@ if args.cuda:
 
 optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
-writer = None  # Will be used to write TensorBoard events
+# writer = None  # Will be used to write TensorBoard events
 
 
 def train(epoch):
@@ -160,8 +161,8 @@ def train(epoch):
                 )
             )
             step = epoch * len(train_loader) + batch_idx
-            log_scalar("train_loss", loss.data.item(), step)
-            model.log_weights(step)
+            # log_scalar("train_loss", loss.data.item(), step)
+            # model.log_weights(step)
 
 
 def test(epoch):
@@ -188,24 +189,24 @@ def test(epoch):
         )
     )
     step = (epoch + 1) * len(train_loader)
-    log_scalar("test_loss", test_loss, step)
-    log_scalar("test_accuracy", test_accuracy, step)
+    # log_scalar("test_loss", test_loss, step)
+    # log_scalar("test_accuracy", test_accuracy, step)
 
 
-def log_scalar(name, value, step):
-    """Log a scalar value to both MLflow and TensorBoard"""
-    writer.add_scalar(name, value, step)
-    mlflow.log_metric(name, value)
+# def log_scalar(name, value, step):
+#     """Log a scalar value to both MLflow and TensorBoard"""
+#     writer.add_scalar(name, value, step)
+#     mlflow.log_metric(name, value)
 
 
-with mlflow.start_run():
+with mlflow.start_run() as run1:
     # Log our parameters into mlflow
-    for key, value in vars(args).items():
-        mlflow.log_param(key, value)
+    # for key, value in vars(args).items():
+    #     mlflow.log_param(key, value)
 
     # Create a SummaryWriter to write TensorBoard events locally
     output_dir = dirpath = tempfile.mkdtemp()
-    writer = SummaryWriter(output_dir)
+    # writer = SummaryWriter(output_dir)
     print("Writing TensorBoard events locally to %s\n" % output_dir)
 
     # Perform the training
@@ -222,21 +223,23 @@ with mlflow.start_run():
     )
 
     # Log the model as an artifact of the MLflow run.
-    print("\nLogging the trained model as a run artifact...")
-    mlflow.pytorch.log_model(model, artifact_path="pytorch-model", pickle_module=pickle)
-    print(
-        "\nThe model is logged at:\n%s" % os.path.join(mlflow.get_artifact_uri(), "pytorch-model")
-    )
+    # print("\nLogging the trained model as a run artifact...")
+    # mlflow.pytorch.log_model(model, artifact_path="pytorch-model", pickle_module=pickle)
+    # print(
+    #     "\nThe model is logged at:\n%s" % os.path.join(mlflow.get_artifact_uri(), "pytorch-model")
+    # )
 
-    # Since the model was logged as an artifact, it can be loaded to make predictions
-    loaded_model = mlflow.pytorch.load_model(mlflow.get_artifact_uri("pytorch-model"))
+# Since the model was logged as an artifact, it can be loaded to make predictions
+# model_uri = "runs:/{}/model".format(run1.info.run_id)
+# loaded_model = mlflow.pytorch.load_model(model_uri)
+# # loaded_model = mlflow.pytorch.load_model(mlflow.get_artifact_uri("pytorch-model"))
 
-    # Extract a few examples from the test dataset to evaulate on
-    eval_data, eval_labels = next(iter(test_loader))
+# # Extract a few examples from the test dataset to evaulate on
+# eval_data, eval_labels = next(iter(test_loader))
 
-    # Make a few predictions
-    predictions = loaded_model(eval_data).data.max(1)[1]
-    template = 'Sample {} : Ground truth is "{}", model prediction is "{}"'
-    print("\nSample predictions")
-    for index in range(5):
-        print(template.format(index, eval_labels[index], predictions[index]))
+# # Make a few predictions
+# predictions = loaded_model(eval_data).data.max(1)[1]
+# template = 'Sample {} : Ground truth is "{}", model prediction is "{}"'
+# print("\nSample predictions")
+# for index in range(5):
+#     print(template.format(index, eval_labels[index], predictions[index]))
