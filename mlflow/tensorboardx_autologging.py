@@ -1,4 +1,5 @@
 import time
+import atexit
 import mlflow
 from mlflow.entities import Metric
 import concurrent.futures
@@ -112,6 +113,7 @@ def autolog():
     #     result = original(self, *args, **kwargs)
     #     _flush_queue()
     #     return result
+    atexit.register(_flush_queue)
 
     def add_scalar(original, self, arg1, arg2, arg3):
         _log_scalar(arg1, arg2, arg3)
