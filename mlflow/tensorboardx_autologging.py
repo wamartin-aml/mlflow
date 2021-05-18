@@ -16,12 +16,13 @@ from mlflow.utils.autologging_utils import (
 )
 from mlflow.utils.annotations import experimental
 from tensorboardX import SummaryWriter
+from mlflow.pytorch import FLAVOR_NAME
 
 _metric_queue = []
 _MAX_METRIC_QUEUE_SIZE = 500
 _thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 _metric_queue_lock = RLock()
-FLAVOR_NAME = "tensorboardX"
+# FLAVOR_NAME = "tensorboardX"
 
 
 def _add_to_queue(key, value, step, time, run_id):
@@ -120,24 +121,8 @@ def autolog():
         return original(self, arg1, arg2, arg3)
 
     non_managed = [
-        (SummaryWriter, "add_scalar", add_scalar),
-        # (EventFileWriter, "add_event", add_event),
-        # (EventFileWriterV2, "add_event", add_event),
-        # (FileWriter, "add_summary", add_summary),
-        # (tensorflow.estimator.Estimator, "export_saved_model", export_saved_model),
-        # (tensorflow.estimator.Estimator, "export_savedmodel", export_saved_model),
+        (SummaryWriter, "add_scalar", add_scalar)
     ]
-
-    # Add compat.v1 Estimator patching for versions of tensfor that are 2.0+.
-    # if LooseVersion(tensorflow.__version__) >= LooseVersion("2.0.0"):
-    #     old_estimator_class = tensorflow.compat.v1.estimator.Estimator
-    #     v1_train = (old_estimator_class, "train", train)
-    #     v1_export_saved_model = (old_estimator_class, "export_saved_model", export_saved_model)
-    #     v1_export_savedmodel = (old_estimator_class, "export_savedmodel", export_saved_model)
-
-    #     managed.append(v1_train)
-    #     non_managed.append(v1_export_saved_model)
-    #     non_managed.append(v1_export_savedmodel)
 
     for p in non_managed:
         safe_patch(FLAVOR_NAME, *p)

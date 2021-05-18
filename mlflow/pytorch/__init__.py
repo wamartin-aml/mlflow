@@ -972,6 +972,23 @@ def autolog(
     """
     import pytorch_lightning as pl
     from mlflow.pytorch._pytorch_autolog import _create_patch_fit
+    from tensorboardX import SummaryWriter
+
+    def add_scalar(original, self, arg1, arg2, arg3):
+        _log_scalar(arg1, arg2, arg3)
+        return original(self, arg1, arg2, arg3)
+
+    non_managed = [
+        (SummaryWriter, "add_scalar", add_scalar),
+        # (EventFileWriter, "add_event", add_event),
+        # (EventFileWriterV2, "add_event", add_event),
+        # (FileWriter, "add_summary", add_summary),
+        # (tensorflow.estimator.Estimator, "export_saved_model", export_saved_model),
+        # (tensorflow.estimator.Estimator, "export_savedmodel", export_saved_model),
+    ]
 
     fit = _create_patch_fit(log_every_n_epoch=log_every_n_epoch, log_models=log_models)
     safe_patch(FLAVOR_NAME, pl.Trainer, "fit", fit, manage_run=True)
+
+    for p in non_managed:
+        safe_patch(FLAVOR_NAME, *p)
