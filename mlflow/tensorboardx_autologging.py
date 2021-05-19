@@ -2,6 +2,7 @@ import time
 import atexit
 import mlflow
 from mlflow.entities import Metric
+from mlflow.pytorch import FLAVOR_NAME
 import concurrent.futures
 from threading import RLock
 from mlflow.utils.autologging_utils import (
@@ -21,7 +22,6 @@ _metric_queue = []
 _MAX_METRIC_QUEUE_SIZE = 500
 _thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 _metric_queue_lock = RLock()
-FLAVOR_NAME = "tensorboardX"
 
 
 def _add_to_queue(key, value, step, time, run_id):
@@ -34,26 +34,6 @@ def _add_to_queue(key, value, step, time, run_id):
     if len(_metric_queue) > _MAX_METRIC_QUEUE_SIZE:
         _thread_pool.submit(_flush_queue)
 
-# def _log_event(event):
-#     """
-#     Extracts metric information from the event protobuf
-#     """
-#     if event.WhichOneof("what") == "summary":
-#         summary = event.summary
-#         for v in summary.value:
-#             if v.HasField("simple_value"):
-#                 # NB: Most TensorFlow APIs use one-indexing for epochs, while tf.Keras
-#                 # uses zero-indexing. Accordingly, the modular arithmetic used here is slightly
-#                 # different from the arithmetic used in `__MLflowTfKeras2Callback.on_epoch_end`,
-#                 # which provides metric logging hooks for tf.Keras
-#                 if (event.step - 1) % _LOG_EVERY_N_STEPS == 0:
-#                     _add_to_queue(
-#                         key=v.tag,
-#                         value=v.simple_value,
-#                         step=event.step,
-#                         time=int(time.time() * 1000),
-#                         run_id=mlflow.active_run().info.run_id,
-#                     )
 
 def _log_scalar(arg1, arg2, arg3):
     _add_to_queue(
@@ -104,15 +84,14 @@ def _flush_queue():
 
 @experimental
 @autologging_integration(FLAVOR_NAME)
-def autolog():
-    # def add_event(original, self, event):
-    #     _log_event(event)
-    #     return original(self, event)
+def autolog(
+    disable=False,
+    silent=False
+):
+    """
+    Enables automatic logging from TensorboardX to MLflow.
+    """
 
-    # def add_summary(original, self, *args, **kwargs):
-    #     result = original(self, *args, **kwargs)
-    #     _flush_queue()
-    #     return result
     atexit.register(_flush_queue)
 
     def add_scalar(original, self, arg1, arg2, arg3):
@@ -121,23 +100,7 @@ def autolog():
 
     non_managed = [
         (SummaryWriter, "add_scalar", add_scalar),
-        # (EventFileWriter, "add_event", add_event),
-        # (EventFileWriterV2, "add_event", add_event),
-        # (FileWriter, "add_summary", add_summary),
-        # (tensorflow.estimator.Estimator, "export_saved_model", export_saved_model),
-        # (tensorflow.estimator.Estimator, "export_savedmodel", export_saved_model),
     ]
-
-    # Add compat.v1 Estimator patching for versions of tensfor that are 2.0+.
-    # if LooseVersion(tensorflow.__version__) >= LooseVersion("2.0.0"):
-    #     old_estimator_class = tensorflow.compat.v1.estimator.Estimator
-    #     v1_train = (old_estimator_class, "train", train)
-    #     v1_export_saved_model = (old_estimator_class, "export_saved_model", export_saved_model)
-    #     v1_export_savedmodel = (old_estimator_class, "export_savedmodel", export_saved_model)
-
-    #     managed.append(v1_train)
-    #     non_managed.append(v1_export_saved_model)
-    #     non_managed.append(v1_export_savedmodel)
 
     for p in non_managed:
         safe_patch(FLAVOR_NAME, *p)

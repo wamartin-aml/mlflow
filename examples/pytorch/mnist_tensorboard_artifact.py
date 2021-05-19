@@ -22,6 +22,8 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 
+mlflow.tbx_autolog.autolog()
+
 # Command-line arguments
 parser = argparse.ArgumentParser(description="PyTorch MNIST Example")
 parser.add_argument(
@@ -195,7 +197,6 @@ def test(epoch):
 def log_scalar(name, value, step):
     """Log a scalar value to both MLflow and TensorBoard"""
     writer.add_scalar(name, value, step)
-    mlflow.log_metric(name, value)
 
 
 with mlflow.start_run():
